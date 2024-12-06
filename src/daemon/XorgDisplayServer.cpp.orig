@@ -86,7 +86,7 @@ namespace SDDM {
         return m_cookie;
     }
 
-    bool XorgDisplayServer::addCookie(const QString &file) {
+    void XorgDisplayServer::addCookie(const QString &file) {
         // log message
         qDebug() << "Adding cookie to" << file;
 
@@ -102,13 +102,13 @@ namespace SDDM {
 
         // check file
         if (!fp)
-            return false;
+            return;
         fprintf(fp, "remove %s\n", qPrintable(m_display));
         fprintf(fp, "add %s . %s\n", qPrintable(m_display), qPrintable(m_cookie));
         fprintf(fp, "exit\n");
 
         // close pipe
-        return pclose(fp) == 0;
+        pclose(fp);
     }
 
     bool XorgDisplayServer::start() {
@@ -124,15 +124,6 @@ namespace SDDM {
 
         // log message
         qDebug() << "Display server starting...";
-
-        // generate auth file.
-        // For the X server's copy, the display number doesn't matter.
-        // An empty file would result in no access control!
-        m_display = QStringLiteral(":0");
-        if(!addCookie(m_authPath)) {
-            qCritical() << "Failed to write xauth file";
-            return false;
-        }
 
         if (daemonApp->testing()) {
             QStringList args;
@@ -203,14 +194,8 @@ namespace SDDM {
             emit started();
         }
 
-        // The file is also used by the greeter, which does care about the
-        // display number. Write the proper entry, if it's different.
-        if(m_display != QStringLiteral(":0")) {
-            if(!addCookie(m_authPath)) {
-                qCritical() << "Failed to write xauth file";
-                return false;
-            }
-        }
+        // generate auth file
+        addCookie(m_authPath);
         changeOwner(m_authPath);
 
         // set flag
